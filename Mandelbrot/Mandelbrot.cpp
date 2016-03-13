@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include <omp.h>
 #include "tga.h"
+#include <time.h>
 
 int xres;
 int yres;
@@ -35,8 +36,8 @@ std::vector<std::vector<unsigned char>> colors {
 };
 
 void paintPix(int x, int y, int n)	{
-	if (n >= 0){
-		printf("%d: Paint pixel (%d,%d) with color for %d\n", omp_get_thread_num(), x, y, n);
+	if (n >= 0)	{
+		//printf("%d: Paint pixel (%d,%d) with color for %d\n", omp_get_thread_num(), x, y, n);
 
 		int index = (x + y * xres) * 3;
 
@@ -77,6 +78,7 @@ int main(int argc, char *argv[])
 	char* filepath = argv[1];
 
 	printf("Starting parallel mandelbrot calculation!\n", omp_get_num_threads());
+	printf("Please provide input parameters in the following order (xres, yres, xmin, ymin, xmax, ymax, maxN): \n", omp_get_num_threads());
 
 	// read values
 	scanf_s("%d", &xres);
@@ -94,6 +96,8 @@ int main(int argc, char *argv[])
 	image->type = 0;
 	image->imageData = std::vector<unsigned char>(3 * xres * yres);
 
+	clock_t start = clock(); // save start seconds
+
 	#pragma omp parallel
 	{
 		for (int x = omp_get_thread_num(); x < xres; x += omp_get_num_threads())	{
@@ -103,8 +107,11 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	tga::saveTGA(*image, filepath);
+	// print elapsed time
+  	clock_t end = clock();
+	printf("Cacluation finished in %d millis.", end - start);
 
-	scanf_s("%d", &maxN);
+	tga::saveTGA(*image, filepath);	  
+
 	return 0;
 }
