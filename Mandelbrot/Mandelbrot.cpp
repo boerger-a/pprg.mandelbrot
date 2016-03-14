@@ -5,6 +5,7 @@
 #include <omp.h>
 #include "tga.h"
 #include <time.h>
+#include <tuple>
 
 int xres;
 int yres;
@@ -35,18 +36,33 @@ std::vector<std::vector<unsigned char>> colors {
 	{ 106, 52, 3 }
 };
 
+std::tuple<int, int, int> get_rgb_smooth(int n, int iter_max) {
+	// map n on the 0..1 interval
+	double t = (double)n / (double)iter_max;
+
+	// Use smooth polynomials for r, g, b
+	int r = (int)(9 * (1 - t)*t*t*t * 255);
+	int g = (int)(15 * (1 - t)*(1 - t)*t*t * 255);
+	int b = (int)(8.5*(1 - t)*(1 - t)*(1 - t)*t * 255);
+	return std::tuple<int, int, int>(r, g, b);
+}
+
 void paintPix(int x, int y, int n)	{
-	if (n >= 0)	{
-		//printf("%d: Paint pixel (%d,%d) with color for %d\n", omp_get_thread_num(), x, y, n);
+	//printf("%d: Paint pixel (%d,%d) with color for %d\n", omp_get_thread_num(), x, y, n);
 
-		int index = (x + y * xres) * 3;
+	int index = (x + (yres - y - 1) * xres) * 3;
 
-		// get different colors from array with modulo for index
-		int c = n % 16;
-		image->imageData[index] = colors[c][0];
-		image->imageData[index + 1] = colors[c][1];
-		image->imageData[index + 2] = colors[c][2];
-	}
+	// colors from array
+	int c = n % 16;
+	image->imageData[index] = colors[c][0];
+	image->imageData[index + 1] = colors[c][1];
+	image->imageData[index + 2] = colors[c][2];
+
+	/*// smooth colors
+	std::tuple<int, int, int> rgb = get_rgb_smooth(n, maxN);
+	image->imageData[index] = std::get<0>(rgb);
+	image->imageData[index + 1] = std::get<1>(rgb);
+	image->imageData[index + 2] = std::get<2>(rgb);*/
 }
 
 void calcPix(int x, int y)	{
@@ -65,7 +81,7 @@ void calcPix(int x, int y)	{
 		zr = nextZr;
 		zi = nextZi;
 	}
-	paintPix(x, y, -1);
+	paintPix(x, y, maxN);
 }
 
 int main(int argc, char *argv[])
@@ -77,8 +93,8 @@ int main(int argc, char *argv[])
 
 	char* filepath = argv[1];
 
-	printf("Starting parallel mandelbrot calculation!\n", omp_get_num_threads());
-	printf("Please provide input parameters in the following order (xres, yres, xmin, ymin, xmax, ymax, maxN): \n", omp_get_num_threads());
+	//printf("Starting parallel mandelbrot calculation!\n", omp_get_num_threads());
+	//printf("Please provide input parameters in the following order (xres, yres, xmin, ymin, xmax, ymax, maxN): \n", omp_get_num_threads());
 
 	// read values
 	scanf_s("%d", &xres);
@@ -96,7 +112,7 @@ int main(int argc, char *argv[])
 	image->type = 0;
 	image->imageData = std::vector<unsigned char>(3 * xres * yres);
 
-	clock_t start = clock(); // save start seconds
+	//clock_t start = clock(); // save start seconds
 
 	#pragma omp parallel
 	{
@@ -108,8 +124,8 @@ int main(int argc, char *argv[])
 	}
 
 	// print elapsed time
-  	clock_t end = clock();
-	printf("Cacluation finished in %d millis.", end - start);
+  	//clock_t end = clock();
+	//printf("Cacluation finished in %d millis.", end - start);
 
 	tga::saveTGA(*image, filepath);	  
 
